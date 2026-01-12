@@ -6,23 +6,15 @@ export enum Role {
   CLIENT = 'CLIENT',
 }
 
-export const ROLE_HIERARCHY: Record<Role, number> = {
-  [Role.SUPER_ADMIN]: 5,
-  [Role.ADMIN]: 4,
-  [Role.MANAGER]: 3,
-  [Role.EMPLOYEE]: 2,
-  [Role.CLIENT]: 1,
-};
-
+/**
+ * Check if user has EXACT role match (no hierarchy)
+ * User must have at least one of the required roles
+ */
 export function hasRequiredRole(userRoles: Role[], requiredRoles: Role[]): boolean {
   if (!userRoles || userRoles.length === 0) {
     return false;
   }
 
-  const maxUserRoleLevel = Math.max(...userRoles.map(role => ROLE_HIERARCHY[role] || 0));
-
-  return requiredRoles.some(requiredRole => {
-    const requiredLevel = ROLE_HIERARCHY[requiredRole] || 0;
-    return maxUserRoleLevel >= requiredLevel;
-  });
+  // Exact match: user must have at least one of the required roles
+  return userRoles.some(userRole => requiredRoles.includes(userRole));
 }

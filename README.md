@@ -1,98 +1,284 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Auth System
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A comprehensive authentication and authorization API system built with NestJS, featuring multiple authentication methods, role-based access control (RBAC), and audit logging.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Overview
 
-## Description
+This system provides secure authentication and authorization for applications, supporting both user-based and client-based authentication with a robust audit trail.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### Technology Stack
 
-## Project setup
+- **Framework**: [NestJS](https://nestjs.com/) - A progressive Node.js framework
+- **Language**: TypeScript
+- **Database**: PostgreSQL with [TypeORM](https://typeorm.io/)
+- **Authentication**: JWT (JSON Web Tokens), API Keys
+- **Documentation**: Swagger/OpenAPI
 
-```bash
-$ pnpm install
+## Features
+
+### User Authentication
+- Email/password registration and login
+- JWT-based authentication with access tokens (1h expiry)
+- Refresh token support (7d expiry)
+- Password hashing with bcrypt
+- User profile management
+- Account activation/deactivation
+- Last login tracking
+
+### Client Authentication
+- API key-based authentication for external integrations
+- SHA256-hashed API keys with expiration dates
+- Email verification with OTP tokens
+- Client activity tracking
+
+### Role-Based Access Control (RBAC)
+- Five role levels: SUPER_ADMIN, ADMIN, MANAGER, EMPLOYEE, CLIENT
+- Many-to-many user-role relationships
+- Decorator-based route protection
+- Role hierarchy enforcement
+
+### Security Features
+- Rate limiting (multiple tiers)
+- Comprehensive audit logging
+- IP address and user agent tracking
+- Input validation with class-validator
+- CORS protection
+
+### Audit Logging
+- Automatic logging of all user and client actions
+- Entity tracking with action types
+- IP address and user agent capture
+- Queryable audit history
+
+## Architecture
+
+The system follows a modular architecture with clear separation of concerns:
+
+```
+src/
+├── modules/
+│   ├── auth/          # Authentication logic (login, register, JWT)
+│   ├── users/         # User management and CRUD operations
+│   ├── roles/         # Role management and RBAC
+│   ├── clients/       # Client and API key management
+│   └── audit/         # Audit logging service
+├── common/
+│   ├── guards/        # Authentication and authorization guards
+│   ├── interceptors/  # Request/response transformation and logging
+│   ├── decorators/    # Custom decorators for route protection
+│   └── constants/     # Action definitions and configurations
+└── database/
+    ├── migrations/    # Database schema migrations
+    ├── seeds/         # Database seeding scripts
+    └── entities/      # TypeORM entities
 ```
 
-## Compile and run the project
+### Authentication Flow
 
-```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+```
+User Registration -> Password Hash -> Create User -> Assign Default Role -> Return JWT
+User Login -> Validate Password -> Generate JWT + Refresh Token -> Update Last Login
+Protected Request -> JWT Guard -> Role Guard -> Controller -> Service -> Response
 ```
 
-## Run tests
+## Prerequisites
+
+- **Node.js** (v18 or higher recommended)
+- **PostgreSQL** (v12 or higher)
+- **Redis** (optional - configured but not actively used)
+
+## Getting Started
+
+### Installation
 
 ```bash
-# unit tests
-$ pnpm run test
+# Clone the repository
+git clone <repository-url>
+cd auth-system
 
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+# Install dependencies
+npm install
 ```
 
-## Deployment
+### Environment Configuration
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Create a `.env` file in the root directory:
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+cp .env.example .env
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Edit `.env` with your configuration:
 
-## Resources
+```env
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
+DB_DATABASE=auth_system
 
-Check out a few resources that may come in handy when working with NestJS:
+# JWT
+JWT_SECRET=your_jwt_secret_key
+JWT_EXPIRES_IN=1h
+REFRESH_TOKEN_SECRET=your_refresh_secret
+REFRESH_TOKEN_EXPIRES_IN=7d
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+# API
+PORT=3000
+NODE_ENV=development
 
-## Support
+# Redis (optional)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### Running with Docker (Recommended)
 
-## Stay in touch
+```bash
+# Start all services (PostgreSQL, Redis, API)
+docker-compose up -d
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+# Run database migrations
+docker-compose exec api npm run migration:run
+
+# Seed the database
+docker-compose exec api npm run seed
+```
+
+The API will be available at `http://localhost:3000`
+
+### Running Locally
+
+```bash
+# Start PostgreSQL and Redis with Docker
+docker-compose up -d postgres redis
+
+# Run database migrations
+npm run migration:run
+
+# Seed the database
+npm run seed
+
+# Start the development server
+npm run start:dev
+```
+
+### Database Setup
+
+```bash
+# Run migrations
+npm run migration:run
+
+# Revert last migration
+npm run migration:revert
+
+# Seed initial data
+npm run seed
+```
+
+## Available Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run start:dev` | Start in development mode with hot-reload |
+| `npm run start:prod` | Run production build |
+| `npm run build` | Build for production |
+| `npm run migration:run` | Run database migrations |
+| `npm run migration:revert` | Revert last migration |
+| `npm run migration:generate` | Generate new migration |
+| `npm run seed` | Seed database with initial data |
+| `npm run lint` | Run ESLint |
+| `npm run format` | Format code with Prettier |
+
+## API Documentation
+
+Interactive API documentation is available via Swagger UI:
+
+```
+http://localhost:3000/api/docs
+```
+
+The Swagger UI includes:
+- All available endpoints
+- Request/response schemas
+- Authentication methods (Bearer token and API key)
+- Try-it-out functionality
+
+## Project Structure
+
+### Core Modules
+
+- **[auth/](src/modules/auth/)** - Authentication endpoints and JWT token management
+- **[users/](src/modules/users/)** - User entity management and CRUD operations
+- **[roles/](src/modules/roles/)** - Role definitions and RBAC logic
+- **[clients/](src/modules/clients/)** - Client management and API key generation
+- **[audit/](src/modules/audit/)** - Audit log storage and querying
+
+### Common Components
+
+- **[guards/](src/common/guards/)** - JWT authentication, role validation, API key guards
+- **[interceptors/](src/common/interceptors/)** - Response transformation and audit logging
+- **[decorators/](src/common/decorators/)** - `@Roles()`, `@CurrentUser()`, `@CurrentClient()`
+- **[constants/](src/common/constants/)** - Action types and configuration values
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DB_HOST` | Database host | localhost |
+| `DB_PORT` | Database port | 5432 |
+| `DB_USERNAME` | Database username | - |
+| `DB_PASSWORD` | Database password | - |
+| `DB_DATABASE` | Database name | auth_system |
+| `JWT_SECRET` | JWT signing secret | - |
+| `JWT_EXPIRES_IN` | Access token expiry | 1h |
+| `REFRESH_TOKEN_SECRET` | Refresh token secret | - |
+| `REFRESH_TOKEN_EXPIRES_IN` | Refresh token expiry | 7d |
+| `PORT` | API server port | 3000 |
+| `NODE_ENV` | Environment | development |
+
+## Development
+
+### Code Style
+
+This project uses:
+- **ESLint** for linting
+- **Prettier** for code formatting
+
+```bash
+# Check for linting errors
+npm run lint
+
+# Format code
+npm run format
+```
+
+### Testing
+
+```bash
+# Run all tests
+npm run test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run e2e tests
+npm run test:e2e
+```
+
+### Database Migrations
+
+When modifying entities, generate a new migration:
+
+```bash
+npm run migration:generate -- src/database/migrations/MigrationName
+```
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+MIT
+
+## Support
+
+For issues and questions, please open an issue on the repository.

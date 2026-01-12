@@ -5,7 +5,6 @@ import { Client } from '../modules/clients/entities/client.entity';
 import { ApiKey } from '../modules/clients/entities/api-key.entity';
 import { AuditLog } from '../modules/audit/entities/audit-log.entity';
 import { Role } from '../modules/roles/entities/role.entity';
-import { Permission } from '../modules/permissions/entities/permission.entity';
 
 dotenv.config();
 
@@ -16,7 +15,7 @@ export const dataSourceOptions: DataSourceOptions = {
   username: process.env.DB_USERNAME || 'postgres',
   password: process.env.DB_PASSWORD || 'postgres',
   database: process.env.DB_DATABASE || 'auth_system',
-  entities: [User, Client, ApiKey, AuditLog, Role, Permission],
+  entities: [User, Client, ApiKey, AuditLog, Role],
   migrations: ['src/database/migrations/*.ts'],
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',

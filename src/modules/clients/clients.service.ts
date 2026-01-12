@@ -64,6 +64,27 @@ export class ClientsService {
       throw new ConflictException('Client with this email already exists');
     }
 
+    // Check if phone number already exists (in clients or users)
+    if (createClientDto.phone) {
+      const existingClientByPhone = await this.clientsRepository.findOne({
+        where: { phone: createClientDto.phone },
+      });
+
+      if (existingClientByPhone) {
+        throw new ConflictException('Client with this phone number already exists');
+      }
+
+      // Check if phone exists in users table by querying raw
+      const existingUserByPhone = await this.clientsRepository.query(
+        'SELECT id FROM users WHERE phone = $1 LIMIT 1',
+        [createClientDto.phone]
+      );
+
+      if (existingUserByPhone.length > 0) {
+        throw new ConflictException('Phone number already exists in users');
+      }
+    }
+
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(createClientDto.password, salt);

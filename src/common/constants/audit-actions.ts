@@ -1,0 +1,21 @@
+export const AUDIT_ACTIONS = {
+  // User Authentication
+  USER_LOGIN: 'USER_LOGIN',
+  USER_LOGOUT: 'USER_LOGOUT',
+  USER_REGISTER: 'USER_REGISTER',
+
+  // Client Authentication
+  CLIENT_LOGIN: 'CLIENT_LOGIN',
+
+  // User Lifecycle
+  USER_CREATED: 'USER_CREATED',
+  USER_UPDATED: 'USER_UPDATED',
+  USER_DELETED: 'USER_DELETED',
+
+  // Client Lifecycle
+  CLIENT_CREATED: 'CLIENT_CREATED',
+  CLIENT_UPDATED: 'CLIENT_UPDATED',
+  CLIENT_DELETED: 'CLIENT_DELETED',
+} as const;
+
+export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

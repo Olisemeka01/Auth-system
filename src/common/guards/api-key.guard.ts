@@ -5,6 +5,7 @@ import { ApiKey } from '../../modules/clients/entities/api-key.entity';
 import { Client } from '../../modules/clients/entities/client.entity';
 import * as crypto from 'crypto';
 import { API_KEY_HEADER } from '../../modules/auth/constants';
+import { AuditService } from '../../modules/audit/audit.service';
 
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
@@ -13,6 +14,7 @@ export class ApiKeyGuard implements CanActivate {
     private apiKeyRepository: Repository<ApiKey>,
     @InjectRepository(Client)
     private clientRepository: Repository<Client>,
+    private auditService: AuditService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -49,6 +51,11 @@ export class ApiKeyGuard implements CanActivate {
     // Update last used timestamp
     apiKeyRecord.last_used_at = new Date();
     await this.apiKeyRepository.save(apiKeyRecord);
+
+    // Log successful client authentication
+    const ip = request.ip || (request as any).socket?.remoteAddress;
+    const userAgent = request.get('user-agent') || '';
+    await this.auditService.logClientLogin(client.id, ip, userAgent);
 
     // Attach client to request
     request.user = {

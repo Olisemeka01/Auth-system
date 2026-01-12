@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/entities/user.entity';
 import { LoginDto, RegisterDto, RefreshTokenDto } from './dto';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class AuthService {
@@ -12,12 +13,13 @@ export class AuthService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private jwtService: JwtService,
+    private auditService: AuditService,
   ) {}
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto, ipAddress?: string, userAgent?: string) {
     const user = await this.usersRepository.findOne({
       where: { email: loginDto.email },
-      relations: ['roles', 'roles.permissions'],
+      relations: ['roles'],
     });
 
     if (!user) {
@@ -43,6 +45,13 @@ export class AuthService {
 
     const tokens = await this.generateTokens(user);
 
+    // Log successful login
+    await this.auditService.logUserLogin(
+      user.id,
+      ipAddress || '',
+      userAgent || '',
+    );
+
     return {
       success: true,
       data: {
@@ -60,7 +69,7 @@ export class AuthService {
     };
   }
 
-  async register(registerDto: RegisterDto) {
+  async register(registerDto: RegisterDto, ipAddress?: string, userAgent?: string) {
     // Check if user already exists
     const existingUser = await this.usersRepository.findOne({
       where: { email: registerDto.email },
@@ -86,6 +95,13 @@ export class AuthService {
 
     const tokens = await this.generateTokens(savedUser);
 
+    // Log successful registration
+    await this.auditService.logUserRegistration(
+      savedUser.id,
+      ipAddress || '',
+      userAgent || '',
+    );
+
     return {
       success: true,
       data: {
@@ -108,7 +124,7 @@ export class AuthService {
 
       const user = await this.usersRepository.findOne({
         where: { id: payload.sub },
-        relations: ['roles', 'roles.permissions'],
+        relations: ['roles'],
       });
 
       if (!user || !user.is_active) {
@@ -127,11 +143,17 @@ export class AuthService {
     }
   }
 
-  async logout(userId: string) {
+  async logout(userId: string, ipAddress?: string, userAgent?: string) {
     // In a production environment, you might want to:
     // 1. Add the token to a blacklist/redis
     // 2. Remove refresh tokens from database
-    // For now, we'll just return a success message
+    // For now, we'll log the logout
+    await this.auditService.logUserLogout(
+      userId,
+      ipAddress || '',
+      userAgent || '',
+    );
+
     return {
       success: true,
       message: 'Logout successful',
@@ -159,7 +181,7 @@ export class AuthService {
   async validateUser(userId: string) {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
-      relations: ['roles', 'roles.permissions'],
+      relations: ['roles'],
     });
 
     if (!user || !user.is_active) {

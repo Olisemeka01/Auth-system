@@ -1,12 +1,14 @@
+import { Logger } from '@nestjs/common';
 import dataSource from '../data-source';
 import { User } from '../../modules/users/entities/user.entity';
 import { Role } from '../../modules/roles/entities/role.entity';
-import { Permission } from '../../modules/permissions/entities/permission.entity';
 import * as bcrypt from 'bcrypt';
+
+const logger = new Logger('DatabaseSeed');
 
 async function runSeed() {
   await dataSource.initialize();
-  console.log('Database connection established');
+  logger.log('Database connection established');
 
   const queryRunner = dataSource.createQueryRunner();
 
@@ -15,188 +17,44 @@ async function runSeed() {
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
-    // Create permissions
-    const permissions = [
+    // Create roles
+    const roles = [
       {
-        name: 'users.create',
-        description: 'Create users',
-        resource: 'users',
-        action: 'create',
+        name: 'Super Admin',
+        description: 'Full system access',
+        is_default: false,
       },
       {
-        name: 'users.read',
-        description: 'Read users',
-        resource: 'users',
-        action: 'read',
+        name: 'Admin',
+        description: 'Administrative access',
+        is_default: false,
       },
       {
-        name: 'users.update',
-        description: 'Update users',
-        resource: 'users',
-        action: 'update',
+        name: 'Manager',
+        description: 'Manager access',
+        is_default: false,
       },
       {
-        name: 'users.delete',
-        description: 'Delete users',
-        resource: 'users',
-        action: 'delete',
+        name: 'Employee',
+        description: 'Employee access',
+        is_default: true,
       },
       {
-        name: 'clients.create',
-        description: 'Create clients',
-        resource: 'clients',
-        action: 'create',
-      },
-      {
-        name: 'clients.read',
-        description: 'Read clients',
-        resource: 'clients',
-        action: 'read',
-      },
-      {
-        name: 'clients.update',
-        description: 'Update clients',
-        resource: 'clients',
-        action: 'update',
-      },
-      {
-        name: 'clients.delete',
-        description: 'Delete clients',
-        resource: 'clients',
-        action: 'delete',
-      },
-      {
-        name: 'roles.create',
-        description: 'Create roles',
-        resource: 'roles',
-        action: 'create',
-      },
-      {
-        name: 'roles.read',
-        description: 'Read roles',
-        resource: 'roles',
-        action: 'read',
-      },
-      {
-        name: 'roles.update',
-        description: 'Update roles',
-        resource: 'roles',
-        action: 'update',
-      },
-      {
-        name: 'roles.delete',
-        description: 'Delete roles',
-        resource: 'roles',
-        action: 'delete',
-      },
-      {
-        name: 'permissions.create',
-        description: 'Create permissions',
-        resource: 'permissions',
-        action: 'create',
-      },
-      {
-        name: 'permissions.read',
-        description: 'Read permissions',
-        resource: 'permissions',
-        action: 'read',
-      },
-      {
-        name: 'permissions.update',
-        description: 'Update permissions',
-        resource: 'permissions',
-        action: 'update',
-      },
-      {
-        name: 'permissions.delete',
-        description: 'Delete permissions',
-        resource: 'permissions',
-        action: 'delete',
-      },
-      {
-        name: 'api_keys.create',
-        description: 'Create API keys',
-        resource: 'api_keys',
-        action: 'create',
-      },
-      {
-        name: 'api_keys.read',
-        description: 'Read API keys',
-        resource: 'api_keys',
-        action: 'read',
-      },
-      {
-        name: 'api_keys.update',
-        description: 'Update API keys',
-        resource: 'api_keys',
-        action: 'update',
-      },
-      {
-        name: 'api_keys.delete',
-        description: 'Delete API keys',
-        resource: 'api_keys',
-        action: 'delete',
-      },
-      {
-        name: 'audit_logs.read',
-        description: 'Read audit logs',
-        resource: 'audit_logs',
-        action: 'read',
+        name: 'Client',
+        description: 'Client access',
+        is_default: false,
       },
     ];
 
-    const createdPermissions: Permission[] = [];
-    for (const perm of permissions) {
-      const permission = queryRunner.manager.create(Permission, perm);
-      const savedPermission = await queryRunner.manager.save(permission);
-      createdPermissions.push(savedPermission);
+    const createdRoles: Role[] = [];
+    for (const roleData of roles) {
+      const role = queryRunner.manager.create(Role, roleData);
+      const savedRole = await queryRunner.manager.save(role);
+      createdRoles.push(savedRole);
     }
-    console.log(`Created ${createdPermissions.length} permissions`);
+    logger.log(`Created ${createdRoles.length} roles`);
 
-    // Create Super Admin role
-    const superAdminRole = queryRunner.manager.create(Role, {
-      name: 'Super Admin',
-      description: 'Full system access with all permissions',
-      is_default: false,
-    });
-    superAdminRole.permissions = createdPermissions;
-    const savedSuperAdminRole = await queryRunner.manager.save(superAdminRole);
-    console.log('Created Super Admin role');
-
-    // Create Manager role
-    const managerPermissions = createdPermissions.filter(
-      (p) =>
-        p.name.includes('read') ||
-        p.name.includes('clients.create') ||
-        p.name.includes('clients.update') ||
-        p.name.includes('api_keys.create') ||
-        p.name.includes('api_keys.update'),
-    );
-    const managerRole = queryRunner.manager.create(Role, {
-      name: 'Manager',
-      description: 'Manager role with limited permissions',
-      is_default: false,
-    });
-    managerRole.permissions = managerPermissions;
-    await queryRunner.manager.save(managerRole);
-    console.log('Created Manager role');
-
-    // Create Staff role
-    const staffPermissions = createdPermissions.filter(
-      (p) =>
-        p.name.includes('read') &&
-        (p.name.includes('clients') || p.name.includes('api_keys')),
-    );
-    const staffRole = queryRunner.manager.create(Role, {
-      name: 'Staff',
-      description: 'Staff role with read-only access',
-      is_default: true,
-    });
-    staffRole.permissions = staffPermissions;
-    await queryRunner.manager.save(staffRole);
-    console.log('Created Staff role');
-
-    // Create admin user
+    // Create admin user with Super Admin role
     const hashedPassword = await bcrypt.hash('123456', 10);
     const adminUser = queryRunner.manager.create(User, {
       email: 'admin@auth.com',
@@ -207,16 +65,59 @@ async function runSeed() {
       is_active: true,
       is_verified: true,
     });
-    adminUser.roles = [savedSuperAdminRole];
+    adminUser.roles = [createdRoles[0]]; // Super Admin role
     await queryRunner.manager.save(adminUser);
-    console.log('Created admin user (admin@auth.com / 12345)');
+    logger.log('Created admin user (admin@auth.com / 123456)');
+
+    // Create test users for each role
+    const testUsers = [
+      {
+        email: 'admin@test.com',
+        first_name: 'Admin',
+        last_name: 'User',
+        phone: '+1234567891',
+        roleIndex: 1, // Admin
+      },
+      {
+        email: 'manager@test.com',
+        first_name: 'Manager',
+        last_name: 'User',
+        phone: '+1234567892',
+        roleIndex: 2, // Manager
+      },
+      {
+        email: 'employee@test.com',
+        first_name: 'Employee',
+        last_name: 'User',
+        phone: '+1234567893',
+        roleIndex: 3, // Employee
+      },
+    ];
+
+    for (const testData of testUsers) {
+      const user = queryRunner.manager.create(User, {
+        email: testData.email,
+        password_hash: hashedPassword,
+        first_name: testData.first_name,
+        last_name: testData.last_name,
+        phone: testData.phone,
+        is_active: true,
+        is_verified: true,
+      });
+      user.roles = [createdRoles[testData.roleIndex]];
+      await queryRunner.manager.save(user);
+    }
+    logger.log('Created test users');
 
     // Commit transaction
     await queryRunner.commitTransaction();
-    console.log('Seed completed successfully!');
+    logger.log('Seed completed successfully!');
   } catch (error) {
     await queryRunner.rollbackTransaction();
-    console.error('Error during seed:', error);
+    logger.error(
+      'Error during seed',
+      error instanceof Error ? error.stack : String(error),
+    );
     throw error;
   } finally {
     await queryRunner.release();
@@ -226,10 +127,13 @@ async function runSeed() {
 
 runSeed()
   .then(() => {
-    console.log('Seed process finished');
+    logger.log('Seed process finished');
     process.exit(0);
   })
   .catch((error) => {
-    console.error('Seed process failed:', error);
+    logger.error(
+      'Seed process failed',
+      error instanceof Error ? error.stack : String(error),
+    );
     process.exit(1);
   });

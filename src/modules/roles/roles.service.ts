@@ -2,7 +2,6 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from './entities/role.entity';
-import { Permission } from '../permissions/entities/permission.entity';
 import { CreateRoleDto, UpdateRoleDto } from './dto';
 
 @Injectable()
@@ -10,13 +9,10 @@ export class RolesService {
   constructor(
     @InjectRepository(Role)
     private rolesRepository: Repository<Role>,
-    @InjectRepository(Permission)
-    private permissionsRepository: Repository<Permission>,
   ) {}
 
   async findAll() {
     const roles = await this.rolesRepository.find({
-      relations: ['permissions'],
       order: { created_at: 'ASC' },
     });
 
@@ -30,7 +26,7 @@ export class RolesService {
   async findOne(id: string) {
     const role = await this.rolesRepository.findOne({
       where: { id },
-      relations: ['permissions', 'users'],
+      relations: ['users'],
     });
 
     if (!role) {
@@ -61,25 +57,11 @@ export class RolesService {
       is_default: createRoleDto.is_default ?? false,
     });
 
-    // Handle permissions if provided
-    if (createRoleDto.permissions && createRoleDto.permissions.length > 0) {
-      const permissions = await this.permissionsRepository.findByIds(
-        createRoleDto.permissions,
-      );
-      role.permissions = permissions;
-    }
-
     const savedRole = await this.rolesRepository.save(role);
-
-    // Reload with relations
-    const roleWithRelations = await this.rolesRepository.findOne({
-      where: { id: savedRole.id },
-      relations: ['permissions'],
-    });
 
     return {
       success: true,
-      data: roleWithRelations,
+      data: savedRole,
       message: 'Role created successfully',
     };
   }
@@ -87,22 +69,13 @@ export class RolesService {
   async update(id: string, updateRoleDto: UpdateRoleDto) {
     const role = await this.rolesRepository.findOne({
       where: { id },
-      relations: ['permissions'],
     });
 
     if (!role) {
       throw new NotFoundException('Role not found');
     }
 
-    // Handle permissions update if provided
-    if (updateRoleDto.permissions) {
-      const permissions = await this.permissionsRepository.findByIds(
-        updateRoleDto.permissions,
-      );
-      role.permissions = permissions;
-    }
-
-    // Update other fields
+    // Update fields
     if (updateRoleDto.description !== undefined) {
       role.description = updateRoleDto.description;
     }
@@ -141,51 +114,6 @@ export class RolesService {
     return {
       success: true,
       message: 'Role deleted successfully',
-    };
-  }
-
-  async assignPermissions(roleId: string, permissionIds: string[]) {
-    const role = await this.rolesRepository.findOne({
-      where: { id: roleId },
-      relations: ['permissions'],
-    });
-
-    if (!role) {
-      throw new NotFoundException('Role not found');
-    }
-
-    const permissions = await this.permissionsRepository.findByIds(permissionIds);
-    role.permissions = permissions;
-
-    const updatedRole = await this.rolesRepository.save(role);
-
-    return {
-      success: true,
-      data: updatedRole,
-      message: 'Permissions assigned successfully',
-    };
-  }
-
-  async removePermission(roleId: string, permissionId: string) {
-    const role = await this.rolesRepository.findOne({
-      where: { id: roleId },
-      relations: ['permissions'],
-    });
-
-    if (!role) {
-      throw new NotFoundException('Role not found');
-    }
-
-    role.permissions = role.permissions.filter(
-      (permission) => permission.id !== permissionId,
-    );
-
-    const updatedRole = await this.rolesRepository.save(role);
-
-    return {
-      success: true,
-      data: updatedRole,
-      message: 'Permission removed successfully',
     };
   }
 }

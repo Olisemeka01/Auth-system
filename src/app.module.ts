@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { User } from './modules/users/entities/user.entity';
@@ -8,18 +10,34 @@ import { Client } from './modules/clients/entities/client.entity';
 import { ApiKey } from './modules/clients/entities/api-key.entity';
 import { AuditLog } from './modules/audit/entities/audit-log.entity';
 import { Role } from './modules/roles/entities/role.entity';
-import { Permission } from './modules/permissions/entities/permission.entity';
+import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ClientsModule } from './modules/clients/clients.module';
 import { RolesModule } from './modules/roles/roles.module';
-import { PermissionsModule } from './modules/permissions/permissions.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ThrottlerModule.forRoot([
+      {
+        name: 'short',
+        ttl: 60000,
+        limit: 100,
+      },
+      {
+        name: 'strict',
+        ttl: 60000,
+        limit: 5,
+      },
+      {
+        name: 'medium',
+        ttl: 300000,
+        limit: 20,
+      },
+    ]),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -30,7 +48,7 @@ import { PermissionsModule } from './modules/permissions/permissions.module';
         username: configService.get('DB_USER', 'postgres'),
         password: configService.get('DB_PASSWORD', 'postgres'),
         database: configService.get('DB_NAME', 'auth_system'),
-        entities: [User, Client, ApiKey, AuditLog, Role, Permission],
+        entities: [User, Client, ApiKey, AuditLog, Role],
         synchronize: false, // Always false in production, use migrations
         logging: configService.get('NODE_ENV') === 'development',
         ssl: configService.get('NODE_ENV') === 'production'
@@ -38,14 +56,19 @@ import { PermissionsModule } from './modules/permissions/permissions.module';
           : false,
       }),
     }),
-    TypeOrmModule.forFeature([AuditLog]),
+    AuditModule,
     AuthModule,
     UsersModule,
     ClientsModule,
     RolesModule,
-    PermissionsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

@@ -3,7 +3,6 @@ import {
   IsString,
   MaxLength,
   IsOptional,
-  IsArray,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -19,12 +18,6 @@ export class CreateRoleDto {
   @IsString({ message: 'Description must be a string' })
   @MaxLength(255, { message: 'Description cannot exceed 255 characters' })
   description?: string;
-
-  @ApiProperty({ example: ['permission-id-1', 'permission-id-2'], description: 'Array of permission IDs', required: false })
-  @IsOptional()
-  @IsArray({ message: 'Permissions must be an array' })
-  @IsString({ each: true, message: 'Each permission ID must be a string' })
-  permissions?: string[];
 
   @ApiProperty({ example: false, description: 'Is this a default role?', required: false })
   @IsOptional()

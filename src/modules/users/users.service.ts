@@ -17,8 +17,7 @@ export class UsersService {
 
     const queryBuilder = this.usersRepository
       .createQueryBuilder('user')
-      .leftJoinAndSelect('user.roles', 'roles')
-      .leftJoinAndSelect('roles.permissions', 'permissions');
+      .leftJoinAndSelect('user.roles', 'roles');
 
     if (is_active !== undefined) {
       queryBuilder.andWhere('user.is_active = :is_active', { is_active });
@@ -56,7 +55,7 @@ export class UsersService {
   async findOne(id: string) {
     const user = await this.usersRepository.findOne({
       where: { id },
-      relations: ['roles', 'roles.permissions'],
+      relations: ['roles'],
     });
 
     if (!user) {
@@ -80,6 +79,27 @@ export class UsersService {
       throw new ConflictException('User with this email already exists');
     }
 
+    // Check if phone number already exists (in users or clients)
+    if (createUserDto.phone) {
+      const existingUserByPhone = await this.usersRepository.findOne({
+        where: { phone: createUserDto.phone },
+      });
+
+      if (existingUserByPhone) {
+        throw new ConflictException('User with this phone number already exists');
+      }
+
+      // Check if phone exists in clients table by querying raw
+      const existingClientByPhone = await this.usersRepository.query(
+        'SELECT id FROM clients WHERE phone = $1 LIMIT 1',
+        [createUserDto.phone]
+      );
+
+      if (existingClientByPhone.length > 0) {
+        throw new ConflictException('Phone number already exists in clients');
+      }
+    }
+
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const password_hash = await bcrypt.hash(createUserDto.password, salt);
@@ -100,7 +120,7 @@ export class UsersService {
     if (createUserDto.roles && createUserDto.roles.length > 0) {
       const userWithRoles = await this.usersRepository.findOne({
         where: { id: savedUser.id },
-        relations: ['roles', 'roles.permissions'],
+        relations: ['roles'],
       });
       return {
         success: true,

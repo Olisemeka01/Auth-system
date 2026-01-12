@@ -1,6 +1,6 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
@@ -54,7 +54,6 @@ async function bootstrap() {
     .addTag('users', 'User management')
     .addTag('clients', 'Client/API Key management')
     .addTag('roles', 'Role management')
-    .addTag('permissions', 'Permission management')
     .addBearerAuth(
       {
         type: 'http',
@@ -81,6 +80,7 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   await app.listen(process.env.PORT ?? 3000);
-  console.log(`Application is running on: http://localhost:${process.env.PORT ?? 3000}`);
+  const logger = new Logger('Bootstrap');
+  logger.log(`Application is running on: http://localhost:${process.env.PORT ?? 3000}`);
 }
 bootstrap();

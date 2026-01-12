@@ -9,6 +9,7 @@ import { Client } from '../clients/entities/client.entity';
 import { JWT_SECRET } from './constants';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { AuthController } from './auth.controller';
         },
       }),
     }),
+    AuditModule,
   ],
   controllers: [AuthController],
   providers: [JwtStrategy, AuthService],
