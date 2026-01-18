@@ -21,26 +21,31 @@ async function runSeed() {
     const roles = [
       {
         name: 'Super Admin',
+        code: 'SUPER_ADMIN',
         description: 'Full system access',
         is_default: false,
       },
       {
         name: 'Admin',
+        code: 'ADMIN',
         description: 'Administrative access',
         is_default: false,
       },
       {
         name: 'Manager',
+        code: 'MANAGER',
         description: 'Manager access',
         is_default: false,
       },
       {
         name: 'Employee',
+        code: 'EMPLOYEE',
         description: 'Employee access',
         is_default: true,
       },
       {
         name: 'Client',
+        code: 'CLIENT',
         description: 'Client access',
         is_default: false,
       },

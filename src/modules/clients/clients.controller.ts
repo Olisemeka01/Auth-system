@@ -7,19 +7,35 @@ import {
   Body,
   Param,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { ClientsService } from './clients.service';
-import { Roles, CurrentUser } from '../../common/decorators';
+import { Roles, CurrentUser, Public } from '../../common/decorators';
 import type { CurrentUserData } from '../../common/decorators/current-user.decorator';
-import { CreateClientDto, UpdateClientDto } from './dto';
+import { CreateClientDto, UpdateClientDto, CreateApiKeyDto } from './dto';
+import { ClientLoginDto } from '../auth/dto/client-login.dto';
 import { Role } from '../auth/enums/role.enum';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ApiKeyGuard } from '../../common/guards/api-key.guard';
+import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('Clients')
 @Controller('clients')
 export class ClientsController {
   constructor(private clientsService: ClientsService) {}
+
+  @Public()
+  @Post('login')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Client login with email or phone' })
+  async login(
+    @Body() clientLoginDto: ClientLoginDto,
+    @Request() req: any,
+  ) {
+    const ip = req.ip || req.socket?.remoteAddress;
+    const userAgent = req.get('user-agent') || '';
+    return this.clientsService.login(clientLoginDto, ip, userAgent);
+  }
 
   @Get()
   @ApiBearerAuth()
@@ -31,11 +47,11 @@ export class ClientsController {
 
   @Post()
   @ApiBearerAuth()
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @Public()
   @ApiOperation({ summary: 'Create a new client' })
   async create(
     @Body() createClientDto: CreateClientDto,
-    @CurrentUser() user: CurrentUserData,
+    @CurrentUser() user: CurrentUserData | null,
   ) {
     return this.clientsService.create(createClientDto);
   }
@@ -43,7 +59,7 @@ export class ClientsController {
   @Get('profile')
   @ApiBearerAuth()
   @Roles(Role.CLIENT, Role.EMPLOYEE, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Get client profile' })
+  @ApiOperation({ summary: 'Get current client profile' })
   async getProfile(@CurrentUser() user: CurrentUserData) {
     return this.clientsService.findOne(user.id);
   }
@@ -63,6 +79,17 @@ export class ClientsController {
     };
   }
 
+  @Post('api-keys')
+  @ApiBearerAuth()
+  @Roles(Role.CLIENT, Role.EMPLOYEE, Role.MANAGER, Role.ADMIN, Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Generate API key for client' })
+  async createApiKey(
+    @Body() createApiKeyDto: CreateApiKeyDto,
+    @CurrentUser() user: CurrentUserData,
+  ) {
+    return this.clientsService.generateApiKey(user.id, createApiKeyDto.name);
+  }
+
   @Put(':id')
   @ApiBearerAuth()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
@@ -79,10 +106,7 @@ export class ClientsController {
   @ApiBearerAuth()
   @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete client (Super Admin only)' })
-  async remove(
-    @Param('id') id: string,
-    @CurrentUser() user: CurrentUserData,
-  ) {
+  async remove(@Param('id') id: string, @CurrentUser() user: CurrentUserData) {
     return this.clientsService.remove(id);
   }
 }

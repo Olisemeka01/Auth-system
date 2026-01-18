@@ -24,7 +24,13 @@ export class RolesGuard implements CanActivate {
       return false;
     }
 
-    const userRoles = user.roles?.map((role: any) => role.name) || [];
+    // Clients can only access endpoints that explicitly allow Role.CLIENT
+    if (user.type === 'client') {
+      return requiredRoles.includes(Role.CLIENT);
+    }
+
+    // Users must have one of the required roles
+    const userRoles = user.roles || [];
 
     return hasRequiredRole(userRoles as Role[], requiredRoles);
   }

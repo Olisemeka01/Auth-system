@@ -54,6 +54,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     const user = await this.userRepository.findOne({
       where: { id: sub },
+      relations: ['roles'],
     });
 
     if (!user || !user.is_active) {
@@ -66,6 +67,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       type: 'user',
       is_active: user.is_active,
       is_verified: user.is_verified,
+      roles: user.roles?.map((role) => role.code) || [],
     };
   }
 }

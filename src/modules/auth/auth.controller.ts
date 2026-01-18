@@ -27,15 +27,15 @@ export class AuthController {
     return this.authService.login(loginDto, ip, userAgent);
   }
 
-  @Public()
-  @Post('register')
-  @Throttle({ default: { limit: 3, ttl: 300000 } })
-  @ApiOperation({ summary: 'User registration' })
-  async register(@Body() registerDto: RegisterDto, @Request() req: AuthRequest) {
-    const ip = req.ip || req.socket?.remoteAddress;
-    const userAgent = req.get('user-agent') || '';
-    return this.authService.register(registerDto, ip, userAgent);
-  }
+  // @Public()
+  // @Post('register')
+  // @Throttle({ default: { limit: 3, ttl: 300000 } })
+  // @ApiOperation({ summary: 'User registration' })
+  // async register(@Body() registerDto: RegisterDto, @Request() req: AuthRequest) {
+  //   const ip = req.ip || req.socket?.remoteAddress;
+  //   const userAgent = req.get('user-agent') || '';
+  //   return this.authService.register(registerDto, ip, userAgent);
+  // }
 
   @Post('refresh')
   @Throttle({ default: { limit: 10, ttl: 60000 } })

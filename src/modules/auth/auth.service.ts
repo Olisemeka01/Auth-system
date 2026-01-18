@@ -1,10 +1,14 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/entities/user.entity';
-import { LoginDto, RegisterDto, RefreshTokenDto } from './dto';
+import { LoginDto, RegisterDto, RefreshTokenDto, ClientLoginDto } from './dto';
 import { AuditService } from '../audit/audit.service';
 
 @Injectable()
@@ -69,7 +73,11 @@ export class AuthService {
     };
   }
 
-  async register(registerDto: RegisterDto, ipAddress?: string, userAgent?: string) {
+  async register(
+    registerDto: RegisterDto,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
     // Check if user already exists
     const existingUser = await this.usersRepository.findOne({
       where: { email: registerDto.email },
@@ -164,7 +172,7 @@ export class AuthService {
     const payload = {
       sub: user.id,
       email: user.email,
-      roles: user.roles?.map((role) => role.name) || [],
+      roles: user.roles?.map((role) => role.code) || [],
     };
 
     const access_token = this.jwtService.sign(payload);
