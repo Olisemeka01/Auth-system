@@ -6,13 +6,14 @@ import {
   Delete,
   Body,
   Param,
-  Query,
   UseGuards,
 } from '@nestjs/common';
+import { Paginate } from 'nestjs-paginate';
+import type { PaginateQuery } from 'nestjs-paginate';
 import { UsersService } from './users.service';
 import { Roles, CurrentUser, Public } from '../../common/decorators';
 import type { CurrentUserData } from '../../common/decorators/current-user.decorator';
-import { CreateUserDto, UpdateUserDto, QueryUsersDto } from './dto';
+import { CreateUserDto, UpdateUserDto } from './dto';
 import { Role } from '../auth/enums/role.enum';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 
@@ -32,7 +33,7 @@ export class UsersController {
   @ApiBearerAuth()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @ApiOperation({ summary: 'Get all users (Admin only)' })
-  async findAll(@Query() query: QueryUsersDto) {
+  async findAll(@Paginate() query: PaginateQuery) {
     return this.usersService.findAll(query);
   }
 

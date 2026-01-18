@@ -9,9 +9,12 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
+import { Paginate } from 'nestjs-paginate';
+import type { PaginateQuery } from 'nestjs-paginate';
 import { ClientsService } from './clients.service';
 import { Roles, CurrentUser, Public } from '../../common/decorators';
 import type { CurrentUserData } from '../../common/decorators/current-user.decorator';
+import { RequestUtil } from '../../common/utils/request.util';
 import { CreateClientDto, UpdateClientDto, CreateApiKeyDto } from './dto';
 import { ClientLoginDto } from '../auth/dto/client-login.dto';
 import { Role } from '../auth/enums/role.enum';
@@ -32,8 +35,7 @@ export class ClientsController {
     @Body() clientLoginDto: ClientLoginDto,
     @Request() req: any,
   ) {
-    const ip = req.ip || req.socket?.remoteAddress;
-    const userAgent = req.get('user-agent') || '';
+    const { ip, userAgent } = RequestUtil.extractClientInfo(req);
     return this.clientsService.login(clientLoginDto, ip, userAgent);
   }
 
@@ -41,8 +43,8 @@ export class ClientsController {
   @ApiBearerAuth()
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.MANAGER)
   @ApiOperation({ summary: 'Get all clients' })
-  async findAll() {
-    return this.clientsService.findAll();
+  async findAll(@Paginate() query: PaginateQuery) {
+    return this.clientsService.findAll(query);
   }
 
   @Post()

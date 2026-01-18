@@ -2,19 +2,18 @@ import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ApiKey } from '../../modules/clients/entities/api-key.entity';
-import { Client } from '../../modules/clients/entities/client.entity';
 import * as crypto from 'crypto';
 import { API_KEY_HEADER } from '../../modules/auth/constants';
-import { AuditService } from '../../modules/audit/audit.service';
 
+/**
+ * API Key authentication guard
+ * Validates API keys and attaches client to request
+ */
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
   constructor(
     @InjectRepository(ApiKey)
     private apiKeyRepository: Repository<ApiKey>,
-    @InjectRepository(Client)
-    private clientRepository: Repository<Client>,
-    private auditService: AuditService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -48,21 +47,12 @@ export class ApiKeyGuard implements CanActivate {
       throw new UnauthorizedException('Client is not active');
     }
 
-    // Update last used timestamp
-    apiKeyRecord.last_used_at = new Date();
-    await this.apiKeyRepository.save(apiKeyRecord);
-
-    // Log successful client authentication
-    const ip = request.ip || (request as any).socket?.remoteAddress;
-    const userAgent = request.get('user-agent') || '';
-    await this.auditService.logClientLogin(client.id, ip, userAgent);
-
     // Attach client to request
     request.user = {
       id: client.id,
       email: client.email,
       type: 'client',
-      roles: [{ name: 'CLIENT' }],
+      roles: ['CLIENT'],
       is_active: client.is_active,
       is_verified: client.is_email_verified === 'VERIFIED',
       api_key_id: apiKeyRecord.id,

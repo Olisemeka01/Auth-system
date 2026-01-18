@@ -3,14 +3,9 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { Public, CurrentUser } from '../../common/decorators';
 import * as currentUserDecorator from '../../common/decorators/current-user.decorator';
-import { LoginDto, RegisterDto, RefreshTokenDto } from './dto';
+import { RequestUtil } from '../../common/utils/request.util';
+import { LoginDto, RefreshTokenDto } from './dto';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-
-interface AuthRequest extends Request {
-  ip?: string;
-  socket?: { remoteAddress?: string };
-  get(name: 'user-agent'): string | undefined;
-}
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -21,9 +16,8 @@ export class AuthController {
   @Post('login')
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'User login' })
-  async login(@Body() loginDto: LoginDto, @Request() req: AuthRequest) {
-    const ip = req.ip || req.socket?.remoteAddress;
-    const userAgent = req.get('user-agent') || '';
+  async login(@Body() loginDto: LoginDto, @Request() req: Request) {
+    const { ip, userAgent } = RequestUtil.extractClientInfo(req);
     return this.authService.login(loginDto, ip, userAgent);
   }
 
@@ -31,9 +25,8 @@ export class AuthController {
   // @Post('register')
   // @Throttle({ default: { limit: 3, ttl: 300000 } })
   // @ApiOperation({ summary: 'User registration' })
-  // async register(@Body() registerDto: RegisterDto, @Request() req: AuthRequest) {
-  //   const ip = req.ip || req.socket?.remoteAddress;
-  //   const userAgent = req.get('user-agent') || '';
+  // async register(@Body() registerDto: RegisterDto, @Request() req: Request) {
+  //   const { ip, userAgent } = RequestUtil.extractClientInfo(req);
   //   return this.authService.register(registerDto, ip, userAgent);
   // }
 
@@ -50,10 +43,9 @@ export class AuthController {
   @ApiOperation({ summary: 'Logout user' })
   async logout(
     @CurrentUser() user: currentUserDecorator.CurrentUserData,
-    @Request() req: AuthRequest,
+    @Request() req: Request,
   ) {
-    const ip = req.ip || req.socket?.remoteAddress;
-    const userAgent = req.get('user-agent') || '';
+    const { ip, userAgent } = RequestUtil.extractClientInfo(req);
     return this.authService.logout(user.id, ip, userAgent);
   }
 

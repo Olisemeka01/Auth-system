@@ -8,6 +8,22 @@ import { Request } from 'express';
 import { CurrentUserData } from '../decorators/current-user.decorator';
 import { AUDIT_ACTIONS } from '../constants/audit-actions';
 
+/**
+ * Configuration mapping routes to audit actions
+ */
+const AUDIT_ROUTE_MAP: Record<string, Record<string, string>> = {
+  users: {
+    POST: AUDIT_ACTIONS.USER_CREATED,
+    PUT: AUDIT_ACTIONS.USER_UPDATED,
+    DELETE: AUDIT_ACTIONS.USER_DELETED,
+  },
+  clients: {
+    POST: AUDIT_ACTIONS.CLIENT_CREATED,
+    PUT: AUDIT_ACTIONS.CLIENT_UPDATED,
+    DELETE: AUDIT_ACTIONS.CLIENT_DELETED,
+  },
+};
+
 @Injectable()
 export class AuditLogInterceptor implements NestInterceptor {
   private readonly logger = new Logger(AuditLogInterceptor.name);
@@ -19,8 +35,6 @@ export class AuditLogInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest<Request>();
-    const response = context.switchToHttp().getResponse();
-
     const user = request.user as CurrentUserData;
     const method = request.method;
     const url = request.url;
@@ -35,11 +49,7 @@ export class AuditLogInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap(async () => {
         try {
-          const entity = this.extractEntityName(url);
-          const entityId = this.extractEntityId(request.params);
-
-          // Determine action: only log specific user/client actions
-          const action = this.getSpecificAction(url, method);
+          const { entity, action } = this.getAuditInfo(url, method);
 
           // Skip logging if no specific action is defined
           if (!action) {
@@ -51,7 +61,7 @@ export class AuditLogInterceptor implements NestInterceptor {
             client_id: user?.type === 'client' ? user.id : null,
             action,
             entity,
-            entity_id: entityId,
+            entity_id: request.params?.id || null,
             changes: this.extractChanges(request.body),
             ip_address: ip,
             user_agent: userAgent,
@@ -66,59 +76,34 @@ export class AuditLogInterceptor implements NestInterceptor {
     );
   }
 
-  private getSpecificAction(url: string, method: string): string | null {
+  /**
+   * Extract entity and action from URL and method using configuration map
+   */
+  private getAuditInfo(url: string, method: string): { entity: string; action: string | null } {
     const segments = url.split('/').filter(Boolean);
-
-    // Check if this is a user CRUD endpoint
-    if (segments.includes('users') && method === 'POST') {
-      return AUDIT_ACTIONS.USER_CREATED;
-    }
-    if (segments.includes('users') && method === 'PUT') {
-      return AUDIT_ACTIONS.USER_UPDATED;
-    }
-    if (segments.includes('users') && method === 'DELETE') {
-      return AUDIT_ACTIONS.USER_DELETED;
-    }
-
-    // Check if this is a client CRUD endpoint
-    if (segments.includes('clients') && method === 'POST') {
-      return AUDIT_ACTIONS.CLIENT_CREATED;
-    }
-    if (segments.includes('clients') && method === 'PUT') {
-      return AUDIT_ACTIONS.CLIENT_UPDATED;
-    }
-    if (segments.includes('clients') && method === 'DELETE') {
-      return AUDIT_ACTIONS.CLIENT_DELETED;
-    }
-
-    return null;
-  }
-
-  private extractEntityName(url: string): string {
-    const segments = url.split('/').filter(Boolean);
-    // Return the first segment after /api/ or the first segment if no /api/
     const apiIndex = segments.indexOf('api');
-    if (apiIndex !== -1 && segments[apiIndex + 1]) {
-      return segments[apiIndex + 1];
-    }
-    return segments[0] || 'unknown';
+
+    // Get the entity name (first segment after /api/)
+    const entity = apiIndex !== -1 && segments[apiIndex + 1]
+      ? segments[apiIndex + 1]
+      : segments[0] || 'unknown';
+
+    // Look up action in configuration map
+    const action = AUDIT_ROUTE_MAP[entity]?.[method] || null;
+
+    return { entity, action };
   }
 
-  private extractEntityId(params: any): string | null {
-    return params.id || null;
-  }
-
+  /**
+   * Remove sensitive fields from request body
+   */
   private extractChanges(body: any): Record<string, any> | null {
     if (!body || Object.keys(body).length === 0) {
       return null;
     }
 
     // Remove sensitive fields
-    const sanitized = { ...body };
-    delete sanitized.password;
-    delete sanitized.password_hash;
-    delete sanitized.email_verification_token;
-
+    const { password, password_hash, email_verification_token, ...sanitized } = body;
     return sanitized;
   }
 }

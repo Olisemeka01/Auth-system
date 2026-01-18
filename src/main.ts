@@ -1,8 +1,7 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
-import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
-import { RolesGuard } from './common/guards/roles.guard';
+import { AuthGuard } from './common/guards/auth.guard';
 import { AuditLogInterceptor } from './common/interceptors/audit-log.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import compression from 'compression';
@@ -29,10 +28,9 @@ async function bootstrap() {
     }),
   );
 
-  // Global guards
+  // Global guard (unified auth + role checking)
   const reflector = app.get(Reflector);
-  app.useGlobalGuards(new JwtAuthGuard(reflector));
-  app.useGlobalGuards(new RolesGuard(reflector));
+  app.useGlobalGuards(new AuthGuard(reflector));
 
   // Global interceptors
   app.useGlobalInterceptors(new AuditLogInterceptor(app.get('AuditLogRepository')));

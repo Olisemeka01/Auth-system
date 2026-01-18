@@ -12,6 +12,8 @@ export interface Response<T> {
   statusCode: number;
   message: string;
   data: T;
+  meta?: any;
+  links?: any;
   timestamp: string;
   path?: string;
 }
@@ -25,7 +27,6 @@ export class TransformInterceptor<T> implements NestInterceptor<
     context: ExecutionContext,
     next: CallHandler,
   ): Observable<Response<T>> {
-    const request = context.switchToHttp().getRequest();
     const response = context.switchToHttp().getResponse();
 
     return next.handle().pipe(
@@ -38,6 +39,19 @@ export class TransformInterceptor<T> implements NestInterceptor<
           'data' in data
         ) {
           return data;
+        }
+
+        // Handle Paginated responses from nestjs-paginate
+        if (data && 'data' in data && 'meta' in data && 'links' in data) {
+          return {
+            success: true,
+            statusCode: response.statusCode,
+            message: 'Request successful',
+            data: data.data,
+            meta: data.meta,
+            links: data.links,
+            timestamp: new Date().toISOString(),
+          };
         }
 
         return {

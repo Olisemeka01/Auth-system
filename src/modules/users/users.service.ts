@@ -1,9 +1,12 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Paginated, PaginateQuery } from 'nestjs-paginate';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
-import { CreateUserDto, UpdateUserDto, QueryUsersDto } from './dto';
+import { CreateUserDto, UpdateUserDto } from './dto';
+import { SecurityUtil } from '../../common/utils/security.util';
+import { PaginateUtil, PAGINATION_CONFIG } from '../../common/utils/paginate.util';
 
 @Injectable()
 export class UsersService {
@@ -12,44 +15,25 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
-  async findAll(query: QueryUsersDto) {
-    const { is_active, is_verified, email, page = '1', limit = '10' } = query;
-
+  async findAll(query: PaginateQuery): Promise<Paginated<User>> {
     const queryBuilder = this.usersRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.roles', 'roles');
 
-    if (is_active !== undefined) {
-      queryBuilder.andWhere('user.is_active = :is_active', { is_active });
+    // Apply filters from query
+    if (query.filter?.['is_active']) {
+      queryBuilder.andWhere('user.is_active = :is_active', {
+        is_active: query.filter['is_active'] === 'true',
+      });
     }
 
-    if (is_verified !== undefined) {
-      queryBuilder.andWhere('user.is_verified = :is_verified', { is_verified });
+    if (query.filter?.['is_verified']) {
+      queryBuilder.andWhere('user.is_verified = :is_verified', {
+        is_verified: query.filter['is_verified'] === 'true',
+      });
     }
 
-    if (email) {
-      queryBuilder.andWhere('user.email LIKE :email', { email: `%${email}%` });
-    }
-
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    const [users, total] = await queryBuilder
-      .skip(skip)
-      .take(parseInt(limit))
-      .orderBy('user.created_at', 'DESC')
-      .getManyAndCount();
-
-    return {
-      success: true,
-      data: users.map((user) => this.sanitizeUser(user)),
-      meta: {
-        total,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(total / parseInt(limit)),
-      },
-      message: 'Users retrieved successfully',
-    };
+    return PaginateUtil.paginate(query, queryBuilder, PAGINATION_CONFIG.USER);
   }
 
   async findOne(id: string) {
@@ -192,7 +176,6 @@ export class UsersService {
   }
 
   private sanitizeUser(user: User) {
-    const { password_hash, ...sanitized } = user as any;
-    return sanitized;
+    return SecurityUtil.sanitizeUser(user);
   }
 }

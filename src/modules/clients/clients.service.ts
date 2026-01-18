@@ -6,8 +6,14 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Paginated, PaginateQuery } from 'nestjs-paginate';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { SecurityUtil } from '../../common/utils/security.util';
+import {
+  PaginateUtil,
+  PAGINATION_CONFIG,
+} from '../../common/utils/paginate.util';
 import { Client, EmailVerificationStatus } from './entities/client.entity';
 import { CreateClientDto, UpdateClientDto } from './dto';
 import { createHash, randomBytes } from 'crypto';
@@ -26,17 +32,12 @@ export class ClientsService {
     private auditService: AuditService,
   ) {}
 
-  async findAll() {
-    const clients = await this.clientsRepository.find({
-      relations: ['api_keys'],
-      order: { created_at: 'DESC' },
-    });
+  async findAll(query: PaginateQuery): Promise<Paginated<Client>> {
+    const queryBuilder = this.clientsRepository
+      .createQueryBuilder('client')
+      .leftJoinAndSelect('client.api_keys', 'api_keys');
 
-    return {
-      success: true,
-      data: clients.map((client) => this.sanitizeClient(client)),
-      message: 'Clients retrieved successfully',
-    };
+    return PaginateUtil.paginate(query, queryBuilder, PAGINATION_CONFIG.CLIENT);
   }
 
   async findOne(id: string) {
@@ -54,18 +55,6 @@ export class ClientsService {
       data: this.sanitizeClient(client),
       message: 'Client retrieved successfully',
     };
-  }
-
-  async findByEmail(email: string) {
-    const client = await this.clientsRepository.findOne({
-      where: { email },
-    });
-
-    if (!client) {
-      throw new NotFoundException('Client not found');
-    }
-
-    return client;
   }
 
   async create(createClientDto: CreateClientDto) {
@@ -329,10 +318,6 @@ export class ClientsService {
   }
 
   private sanitizeClient(client: Client) {
-    const sanitized: any = { ...client };
-    delete sanitized.password_hash;
-    delete sanitized.email_verification_token;
-    delete sanitized.email_verification_token_expires_at;
-    return sanitized;
+    return SecurityUtil.sanitizeClient(client);
   }
 }
