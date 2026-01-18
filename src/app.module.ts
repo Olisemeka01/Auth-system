@@ -23,19 +23,8 @@ import { RolesModule } from './modules/roles/roles.module';
     }),
     ThrottlerModule.forRoot([
       {
-        name: 'short',
         ttl: 60000,
-        limit: 100,
-      },
-      {
-        name: 'strict',
-        ttl: 60000,
-        limit: 5,
-      },
-      {
-        name: 'medium',
-        ttl: 300000,
-        limit: 20,
+        limit: 50,
       },
     ]),
     TypeOrmModule.forRootAsync({
@@ -51,9 +40,10 @@ import { RolesModule } from './modules/roles/roles.module';
         entities: [User, Client, ApiKey, AuditLog, Role],
         synchronize: false, // Always false in production, use migrations
         logging: configService.get('NODE_ENV') === 'development',
-        ssl: configService.get('NODE_ENV') === 'production'
-          ? { rejectUnauthorized: false }
-          : false,
+        ssl:
+          configService.get('NODE_ENV') === 'production'
+            ? { rejectUnauthorized: false }
+            : false,
       }),
     }),
     AuditModule,
